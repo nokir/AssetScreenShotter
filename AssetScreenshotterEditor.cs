@@ -10,12 +10,10 @@ public class AssetScreenshotterEditor : EditorWindow
     // --- Enums for settings ---
     private enum Language { English, Japanese }
     private enum MultiObjectMode { Individual, Group }
-    private enum CaptureAngleMode { Normal, Diagonal, NormalAndDiagonal }
 
     // --- Settings ---
     private string saveFolderPath = "";
     private MultiObjectMode mode = MultiObjectMode.Individual;
-    private CaptureAngleMode captureAngleMode = CaptureAngleMode.Normal;
     private Vector2Int resolution = new Vector2Int(1024, 1024);
     private float zoomFactor = 1.1f;
     private Language currentLanguage = Language.English;
@@ -37,7 +35,6 @@ public class AssetScreenshotterEditor : EditorWindow
     // --- EditorPrefs Keys ---
     private const string SavePathKey = "AssetScreenshotter_SavePath";
     private const string ModeKey = "AssetScreenshotter_Mode";
-    private const string AngleModeKey = "AssetScreenshotter_AngleMode";
     private const string ResolutionXKey = "AssetScreenshotter_ResolutionX";
     private const string ResolutionYKey = "AssetScreenshotter_ResolutionY";
     private const string ZoomKey = "AssetScreenshotter_ZoomFactor";
@@ -61,7 +58,6 @@ public class AssetScreenshotterEditor : EditorWindow
         // Load settings from EditorPrefs
         saveFolderPath = EditorPrefs.GetString(SavePathKey, Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.MyPictures), "AssetScreenshots"));
         mode = (MultiObjectMode)EditorPrefs.GetInt(ModeKey, (int)MultiObjectMode.Individual);
-        captureAngleMode = (CaptureAngleMode)EditorPrefs.GetInt(AngleModeKey, (int)CaptureAngleMode.Normal);
         resolution.x = EditorPrefs.GetInt(ResolutionXKey, 1024);
         resolution.y = EditorPrefs.GetInt(ResolutionYKey, 1024);
         zoomFactor = EditorPrefs.GetFloat(ZoomKey, 1.1f);
@@ -113,37 +109,18 @@ public class AssetScreenshotterEditor : EditorWindow
         mode = (MultiObjectMode)selectedModeIndex;
         EditorGUILayout.Space();
 
-        // 3. Capture Angle Mode
-        EditorGUILayout.LabelField(GetText("CaptureAngleMode"), EditorStyles.miniBoldLabel);
-        EditorGUI.BeginChangeCheck();
-        var angleModeNames = System.Enum.GetNames(typeof(CaptureAngleMode)).Select(n => GetText(n)).ToArray();
-        int selectedAngleModeIndex = (int)captureAngleMode;
-        selectedAngleModeIndex = EditorGUILayout.Popup(GetText("AngleMode"), selectedAngleModeIndex, angleModeNames);
-        captureAngleMode = (CaptureAngleMode)selectedAngleModeIndex;
-        if (EditorGUI.EndChangeCheck())
-        {
-            // Reset preview index when angle mode changes
-            previewIndex = -1;
-        }
+        // Angle Toggles and Settings
+        GUILayout.Label(GetText("NormalAngles"), EditorStyles.miniBoldLabel);
+        DrawAngleToggles(GetNormalDirections());
         EditorGUILayout.Space();
 
-        // Angle Toggles and Settings based on selected mode
-        if (captureAngleMode == CaptureAngleMode.Normal || captureAngleMode == CaptureAngleMode.NormalAndDiagonal)
-        {
-            GUILayout.Label(GetText("NormalAngles"), EditorStyles.miniBoldLabel);
-            DrawAngleToggles(GetNormalDirections());
-        }
-        if (captureAngleMode == CaptureAngleMode.Diagonal || captureAngleMode == CaptureAngleMode.NormalAndDiagonal)
-        {
-            GUILayout.Label(GetText("HorizontalDiagonalAngles"), EditorStyles.miniBoldLabel);
-            DrawAngleToggles(GetHorizontalDiagonalDirections());
+        GUILayout.Label(GetText("HorizontalDiagonalAngles"), EditorStyles.miniBoldLabel);
+        DrawAngleToggles(GetHorizontalDiagonalDirections());
+        EditorGUILayout.Space();
 
-            EditorGUILayout.Space();
-
-            GUILayout.Label(GetText("DiagonalAngles"), EditorStyles.miniBoldLabel);
-            diagonalAngle = EditorGUILayout.Slider(GetText("DiagonalAngleSetting"), diagonalAngle, 0f, 90f);
-            DrawAngleToggles(GetDiagonalDirections());
-        }
+        GUILayout.Label(GetText("DiagonalAngles"), EditorStyles.miniBoldLabel);
+        diagonalAngle = EditorGUILayout.Slider(GetText("DiagonalAngleSetting"), diagonalAngle, 0f, 90f);
+        DrawAngleToggles(GetDiagonalDirections());
         EditorGUILayout.Space();
 
         // 4. Resolution
@@ -207,7 +184,6 @@ public class AssetScreenshotterEditor : EditorWindow
     {
         EditorPrefs.SetString(SavePathKey, saveFolderPath);
         EditorPrefs.SetInt(ModeKey, (int)mode);
-        EditorPrefs.SetInt(AngleModeKey, (int)captureAngleMode);
         EditorPrefs.SetInt(ResolutionXKey, resolution.x);
         EditorPrefs.SetInt(ResolutionYKey, resolution.y);
         EditorPrefs.SetFloat(ZoomKey, zoomFactor);
@@ -316,7 +292,7 @@ public class AssetScreenshotterEditor : EditorWindow
             Bounds bounds = CalculateBounds(targets);
             Vector3 targetCenter = bounds.center + captureOffset;
 
-            var directions = GetDirectionsForMode(captureAngleMode);
+            var directions = GetAllDirections();
 
             foreach (var dir in directions)
             {
@@ -327,7 +303,7 @@ public class AssetScreenshotterEditor : EditorWindow
                 Vector3 cameraPosition = targetCenter + directionVector * bounds.size.magnitude * 1.5f;
 
                 Vector3 upVector = Vector3.up;
-                if (captureAngleMode == CaptureAngleMode.Normal && (dir.Value == Vector3.up || dir.Value == Vector3.down))
+                if (dir.Value == Vector3.up || dir.Value == Vector3.down)
                 {
                     upVector = Vector3.forward;
                 }
@@ -396,7 +372,7 @@ public class AssetScreenshotterEditor : EditorWindow
         Bounds bounds = CalculateBounds(selectedObjects);
         Vector3 targetCenter = bounds.center + captureOffset;
 
-        var directions = GetDirectionsForMode(captureAngleMode);
+        var directions = GetAllDirections();
 
         // Find the next enabled angle
         int startIndex = (previewIndex == -1) ? 0 : (previewIndex + 1) % directions.Count;
@@ -424,7 +400,7 @@ public class AssetScreenshotterEditor : EditorWindow
         Vector3 cameraPosition = targetCenter + directionVector * bounds.size.magnitude * 1.5f;
 
         Vector3 upVector = Vector3.up;
-        if (captureAngleMode == CaptureAngleMode.Normal && (dir.Value == Vector3.up || dir.Value == Vector3.down))
+        if (dir.Value == Vector3.up || dir.Value == Vector3.down)
         {
             upVector = Vector3.forward;
         }
@@ -457,24 +433,12 @@ public class AssetScreenshotterEditor : EditorWindow
         }
     }
 
-    private List<KeyValuePair<string, Vector3>> GetDirectionsForMode(CaptureAngleMode angleMode)
+    private List<KeyValuePair<string, Vector3>> GetAllDirections()
     {
         var directions = new List<KeyValuePair<string, Vector3>>();
-        if (angleMode == CaptureAngleMode.Normal)
-        {
-            directions.AddRange(GetNormalDirections());
-        }
-        else if (angleMode == CaptureAngleMode.Diagonal)
-        {
-            directions.AddRange(GetHorizontalDiagonalDirections());
-            directions.AddRange(GetDiagonalDirections());
-        }
-        else if (angleMode == CaptureAngleMode.NormalAndDiagonal)
-        {
-            directions.AddRange(GetNormalDirections());
-            directions.AddRange(GetHorizontalDiagonalDirections());
-            directions.AddRange(GetDiagonalDirections());
-        }
+        directions.AddRange(GetNormalDirections());
+        directions.AddRange(GetHorizontalDiagonalDirections());
+        directions.AddRange(GetDiagonalDirections());
         return directions;
     }
 
@@ -484,8 +448,8 @@ public class AssetScreenshotterEditor : EditorWindow
         {
             new KeyValuePair<string, Vector3>("_Front", Vector3.forward),
             new KeyValuePair<string, Vector3>("_Back", Vector3.back),
-            new KeyValuePair<string, Vector3>("_Right", Vector3.right),
             new KeyValuePair<string, Vector3>("_Left", Vector3.left),
+            new KeyValuePair<string, Vector3>("_Right", Vector3.right),
             new KeyValuePair<string, Vector3>("_Up", Vector3.up),
             new KeyValuePair<string, Vector3>("_Down", Vector3.down)
         };
@@ -495,10 +459,10 @@ public class AssetScreenshotterEditor : EditorWindow
     {
         return new List<KeyValuePair<string, Vector3>>
         {
-            new KeyValuePair<string, Vector3>("_Front_Right", new Vector3(1, 0, 1)),
             new KeyValuePair<string, Vector3>("_Front_Left", new Vector3(-1, 0, 1)),
-            new KeyValuePair<string, Vector3>("_Back_Right", new Vector3(1, 0, -1)),
-            new KeyValuePair<string, Vector3>("_Back_Left", new Vector3(-1, 0, -1))
+            new KeyValuePair<string, Vector3>("_Front_Right", new Vector3(1, 0, 1)),
+            new KeyValuePair<string, Vector3>("_Back_Left", new Vector3(-1, 0, -1)),
+            new KeyValuePair<string, Vector3>("_Back_Right", new Vector3(1, 0, -1))
         };
     }
 
@@ -510,14 +474,14 @@ public class AssetScreenshotterEditor : EditorWindow
 
         return new List<KeyValuePair<string, Vector3>>
         {
-            new KeyValuePair<string, Vector3>("_Front_Right_Up", new Vector3(xz, y, xz)),
             new KeyValuePair<string, Vector3>("_Front_Left_Up", new Vector3(-xz, y, xz)),
-            new KeyValuePair<string, Vector3>("_Back_Right_Up", new Vector3(xz, y, -xz)),
+            new KeyValuePair<string, Vector3>("_Front_Right_Up", new Vector3(xz, y, xz)),
             new KeyValuePair<string, Vector3>("_Back_Left_Up", new Vector3(-xz, y, -xz)),
-            new KeyValuePair<string, Vector3>("_Front_Right_Down", new Vector3(xz, -y, xz)),
+            new KeyValuePair<string, Vector3>("_Back_Right_Up", new Vector3(xz, y, -xz)),
             new KeyValuePair<string, Vector3>("_Front_Left_Down", new Vector3(-xz, -y, xz)),
-            new KeyValuePair<string, Vector3>("_Back_Right_Down", new Vector3(xz, -y, -xz)),
-            new KeyValuePair<string, Vector3>("_Back_Left_Down", new Vector3(-xz, -y, -xz))
+            new KeyValuePair<string, Vector3>("_Front_Right_Down", new Vector3(xz, -y, xz)),
+            new KeyValuePair<string, Vector3>("_Back_Left_Down", new Vector3(-xz, -y, -xz)),
+            new KeyValuePair<string, Vector3>("_Back_Right_Down", new Vector3(xz, -y, -xz))
         };
     }
 
@@ -574,7 +538,7 @@ public class AssetScreenshotterEditor : EditorWindow
     private void InitializeAngleStates()
     {
         // Ensure all possible angles have an entry, defaulting to true
-        var allDirections = GetNormalDirections().Concat(GetDiagonalDirections()).Concat(GetHorizontalDiagonalDirections());
+        var allDirections = GetAllDirections();
         foreach (var dir in allDirections)
         {
             if (!angleEnabledStates.ContainsKey(dir.Key))
@@ -683,11 +647,6 @@ public class AssetScreenshotterEditor : EditorWindow
             { "CaptureMode", new Dictionary<Language, string> { { Language.English, "Capture Mode" }, { Language.Japanese, "撮影モード" } } },
             { "Individual", new Dictionary<Language, string> { { Language.English, "Individual" }, { Language.Japanese, "個別" } } },
             { "Group", new Dictionary<Language, string> { { Language.English, "Group" }, { Language.Japanese, "グループ" } } },
-            { "CaptureAngleMode", new Dictionary<Language, string> { { Language.English, "Capture Angle Mode" }, { Language.Japanese, "撮影アングルモード" } } },
-            { "AngleMode", new Dictionary<Language, string> { { Language.English, "Angle Mode" }, { Language.Japanese, "アングル" } } },
-            { "Normal", new Dictionary<Language, string> { { Language.English, "Normal (6-axis)" }, { Language.Japanese, "通常アングル(六面図)" } } },
-            { "Diagonal", new Dictionary<Language, string> { { Language.English, "Diagonal" }, { Language.Japanese, "斜めアングル" } } },
-            { "NormalAndDiagonal", new Dictionary<Language, string> { { Language.English, "Normal + Diagonal" }, { Language.Japanese, "通常+斜めアングル" } } },
             { "DiagonalAngleSetting", new Dictionary<Language, string> { { Language.English, "Diagonal Angle" }, { Language.Japanese, "斜めアングルの角度" } } },
             { "OutputResolution", new Dictionary<Language, string> { { Language.English, "Output Resolution (X, Y)" }, { Language.Japanese, "出力解像度 (X, Y)" } } },
             { "ZoomFactor", new Dictionary<Language, string> { { Language.English, "Zoom Factor" }, { Language.Japanese, "拡大率" } } },
@@ -702,7 +661,7 @@ public class AssetScreenshotterEditor : EditorWindow
             { "_Right", new Dictionary<Language, string> { { Language.English, "Right" }, { Language.Japanese, "右" } } },
             { "_Left", new Dictionary<Language, string> { { Language.English, "Left" }, { Language.Japanese, "左" } } },
             { "_Up", new Dictionary<Language, string> { { Language.English, "Up" }, { Language.Japanese, "上" } } },
-            { "_Down", new Dictionary<Language, string> { { Language.English, "Down" } }, { Language.Japanese, "下" } } },
+            { "_Down", new Dictionary<Language, string> { { Language.English, "Down" }, { Language.Japanese, "下" } } },
             { "_Front_Right", new Dictionary<Language, string> { { Language.English, "Front Right" }, { Language.Japanese, "右手前" } } },
             { "_Front_Left", new Dictionary<Language, string> { { Language.English, "Front Left" }, { Language.Japanese, "左手前" } } },
             { "_Back_Right", new Dictionary<Language, string> { { Language.English, "Back Right" }, { Language.Japanese, "右奥" } } },
