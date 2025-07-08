@@ -135,6 +135,11 @@ public class AssetScreenshotterEditor : EditorWindow
         }
         if (captureAngleMode == CaptureAngleMode.Diagonal || captureAngleMode == CaptureAngleMode.NormalAndDiagonal)
         {
+            GUILayout.Label(GetText("HorizontalDiagonalAngles"), EditorStyles.miniBoldLabel);
+            DrawAngleToggles(GetHorizontalDiagonalDirections());
+
+            EditorGUILayout.Space();
+
             GUILayout.Label(GetText("DiagonalAngles"), EditorStyles.miniBoldLabel);
             diagonalAngle = EditorGUILayout.Slider(GetText("DiagonalAngleSetting"), diagonalAngle, 0f, 90f);
             DrawAngleToggles(GetDiagonalDirections());
@@ -461,11 +466,13 @@ public class AssetScreenshotterEditor : EditorWindow
         }
         else if (angleMode == CaptureAngleMode.Diagonal)
         {
+            directions.AddRange(GetHorizontalDiagonalDirections());
             directions.AddRange(GetDiagonalDirections());
         }
         else if (angleMode == CaptureAngleMode.NormalAndDiagonal)
         {
             directions.AddRange(GetNormalDirections());
+            directions.AddRange(GetHorizontalDiagonalDirections());
             directions.AddRange(GetDiagonalDirections());
         }
         return directions;
@@ -481,6 +488,17 @@ public class AssetScreenshotterEditor : EditorWindow
             new KeyValuePair<string, Vector3>("_Left", Vector3.left),
             new KeyValuePair<string, Vector3>("_Up", Vector3.up),
             new KeyValuePair<string, Vector3>("_Down", Vector3.down)
+        };
+    }
+
+    private List<KeyValuePair<string, Vector3>> GetHorizontalDiagonalDirections()
+    {
+        return new List<KeyValuePair<string, Vector3>>
+        {
+            new KeyValuePair<string, Vector3>("_Front_Right", new Vector3(1, 0, 1)),
+            new KeyValuePair<string, Vector3>("_Front_Left", new Vector3(-1, 0, 1)),
+            new KeyValuePair<string, Vector3>("_Back_Right", new Vector3(1, 0, -1)),
+            new KeyValuePair<string, Vector3>("_Back_Left", new Vector3(-1, 0, -1))
         };
     }
 
@@ -556,7 +574,7 @@ public class AssetScreenshotterEditor : EditorWindow
     private void InitializeAngleStates()
     {
         // Ensure all possible angles have an entry, defaulting to true
-        var allDirections = GetNormalDirections().Concat(GetDiagonalDirections());
+        var allDirections = GetNormalDirections().Concat(GetDiagonalDirections()).Concat(GetHorizontalDiagonalDirections());
         foreach (var dir in allDirections)
         {
             if (!angleEnabledStates.ContainsKey(dir.Key))
@@ -667,7 +685,7 @@ public class AssetScreenshotterEditor : EditorWindow
             { "Group", new Dictionary<Language, string> { { Language.English, "Group" }, { Language.Japanese, "グループ" } } },
             { "CaptureAngleMode", new Dictionary<Language, string> { { Language.English, "Capture Angle Mode" }, { Language.Japanese, "撮影アングルモード" } } },
             { "AngleMode", new Dictionary<Language, string> { { Language.English, "Angle Mode" }, { Language.Japanese, "アングル" } } },
-            { "Normal", new Dictionary<Language, string> { { Language.English, "Normal" }, { Language.Japanese, "通常アングル" } } },
+            { "Normal", new Dictionary<Language, string> { { Language.English, "Normal (6-axis)" }, { Language.Japanese, "通常アングル(六面図)" } } },
             { "Diagonal", new Dictionary<Language, string> { { Language.English, "Diagonal" }, { Language.Japanese, "斜めアングル" } } },
             { "NormalAndDiagonal", new Dictionary<Language, string> { { Language.English, "Normal + Diagonal" }, { Language.Japanese, "通常+斜めアングル" } } },
             { "DiagonalAngleSetting", new Dictionary<Language, string> { { Language.English, "Diagonal Angle" }, { Language.Japanese, "斜めアングルの角度" } } },
@@ -675,15 +693,20 @@ public class AssetScreenshotterEditor : EditorWindow
             { "ZoomFactor", new Dictionary<Language, string> { { Language.English, "Zoom Factor" }, { Language.Japanese, "拡大率" } } },
             { "PositionOffset", new Dictionary<Language, string> { { Language.English, "Position Offset" }, { Language.Japanese, "撮影位置オフセット" } } },
             { "OpenFolderToggle", new Dictionary<Language, string> { { Language.English, "Open folder after capture" }, { Language.Japanese, "撮影後にフォルダを開く" } } },
-            { "NormalAngles", new Dictionary<Language, string> { { Language.English, "Normal Angles" }, { Language.Japanese, "通常アングル" } } },
-            { "DiagonalAngles", new Dictionary<Language, string> { { Language.English, "Diagonal Angles" }, { Language.Japanese, "斜めアングル" } } },
+            { "NormalAngles", new Dictionary<Language, string> { { Language.English, "Normal Angles (6-axis)" }, { Language.Japanese, "通常アングル(六面図)" } } },
+            { "HorizontalDiagonalAngles", new Dictionary<Language, string> { { Language.English, "Horizontal Diagonal Angles" }, { Language.Japanese, "水平斜めアングル" } } },
+            { "DiagonalAngles", new Dictionary<Language, string> { { Language.English, "Vertical Diagonal Angles" }, { Language.Japanese, "上下斜めアングル" } } },
             { "ErrorNoAngleEnabled", new Dictionary<Language, string> { { Language.English, "No angles are enabled for the current mode. Please enable at least one angle."}, { Language.Japanese, "現在選択されているモードで有効なアングルがありません。少なくとも1つのアングルを有効にしてください。"} } },
             { "_Front", new Dictionary<Language, string> { { Language.English, "Front" }, { Language.Japanese, "正面" } } },
             { "_Back", new Dictionary<Language, string> { { Language.English, "Back" }, { Language.Japanese, "背面" } } },
             { "_Right", new Dictionary<Language, string> { { Language.English, "Right" }, { Language.Japanese, "右" } } },
             { "_Left", new Dictionary<Language, string> { { Language.English, "Left" }, { Language.Japanese, "左" } } },
             { "_Up", new Dictionary<Language, string> { { Language.English, "Up" }, { Language.Japanese, "上" } } },
-            { "_Down", new Dictionary<Language, string> { { Language.English, "Down" }, { Language.Japanese, "下" } } },
+            { "_Down", new Dictionary<Language, string> { { Language.English, "Down" } }, { Language.Japanese, "下" } } },
+            { "_Front_Right", new Dictionary<Language, string> { { Language.English, "Front Right" }, { Language.Japanese, "右手前" } } },
+            { "_Front_Left", new Dictionary<Language, string> { { Language.English, "Front Left" }, { Language.Japanese, "左手前" } } },
+            { "_Back_Right", new Dictionary<Language, string> { { Language.English, "Back Right" }, { Language.Japanese, "右奥" } } },
+            { "_Back_Left", new Dictionary<Language, string> { { Language.English, "Back Left" }, { Language.Japanese, "左奥" } } },
             { "_Front_Right_Up", new Dictionary<Language, string> { { Language.English, "Front Right Up" }, { Language.Japanese, "右上手前" } } },
             { "_Front_Left_Up", new Dictionary<Language, string> { { Language.English, "Front Left Up" }, { Language.Japanese, "左上手前" } } },
             { "_Back_Right_Up", new Dictionary<Language, string> { { Language.English, "Back Right Up" }, { Language.Japanese, "右奥上" } } },
