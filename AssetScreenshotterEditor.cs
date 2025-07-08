@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEditor;
 using System.IO;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine.SceneManagement;
 
 public class AssetScreenshotterEditor : EditorWindow
@@ -103,13 +104,19 @@ public class AssetScreenshotterEditor : EditorWindow
 
         // 2. Multi-Object Mode
         EditorGUILayout.LabelField(GetText("MultiObjectMode"), EditorStyles.miniBoldLabel);
-        mode = (MultiObjectMode)EditorGUILayout.EnumPopup(GetText("CaptureMode"), mode);
+        var modeNames = System.Enum.GetNames(typeof(MultiObjectMode)).Select(n => GetText(n)).ToArray();
+        int selectedModeIndex = (int)mode;
+        selectedModeIndex = EditorGUILayout.Popup(GetText("CaptureMode"), selectedModeIndex, modeNames);
+        mode = (MultiObjectMode)selectedModeIndex;
         EditorGUILayout.Space();
 
         // 3. Capture Angle Mode
         EditorGUILayout.LabelField(GetText("CaptureAngleMode"), EditorStyles.miniBoldLabel);
         EditorGUI.BeginChangeCheck();
-        captureAngleMode = (CaptureAngleMode)EditorGUILayout.EnumPopup(GetText("AngleMode"), captureAngleMode);
+        var angleModeNames = System.Enum.GetNames(typeof(CaptureAngleMode)).Select(n => GetText(n)).ToArray();
+        int selectedAngleModeIndex = (int)captureAngleMode;
+        selectedAngleModeIndex = EditorGUILayout.Popup(GetText("AngleMode"), selectedAngleModeIndex, angleModeNames);
+        captureAngleMode = (CaptureAngleMode)selectedAngleModeIndex;
         if (EditorGUI.EndChangeCheck())
         {
             // Reset preview index when angle mode changes
@@ -424,7 +431,7 @@ public class AssetScreenshotterEditor : EditorWindow
         sceneView.pivot = cameraPosition;
         sceneView.Repaint();
 
-        sceneView.ShowNotification(new GUIContent($"{GetText("PreviewingAngle")} {dir.Key}"), 1.5f);
+        sceneView.ShowNotification(new GUIContent($"{GetText("PreviewingAngle")} {GetText(dir.Key)}"), 1.5f);
     }
 
     private void ResetSceneView()
@@ -575,7 +582,7 @@ public class AssetScreenshotterEditor : EditorWindow
                 {
                     var dir = directions[currentIndex];
                     bool currentState = IsAngleEnabled(dir.Key);
-                    bool newState = EditorGUILayout.ToggleLeft(GetText(dir.Key.Replace("_", "")), currentState, GUILayout.ExpandWidth(true));
+                    bool newState = EditorGUILayout.ToggleLeft(GetText(dir.Key), currentState, GUILayout.ExpandWidth(true));
                     if (newState != currentState)
                     {
                         angleEnabledStates[dir.Key] = newState;
@@ -653,8 +660,13 @@ public class AssetScreenshotterEditor : EditorWindow
             { "SelectSaveFolder", new Dictionary<Language, string> { { Language.English, "Select Save Folder" }, { Language.Japanese, "保存先フォルダを選択" } } },
             { "MultiObjectMode", new Dictionary<Language, string> { { Language.English, "Multi-Object Mode" }, { Language.Japanese, "複数オブジェクトの撮影モード" } } },
             { "CaptureMode", new Dictionary<Language, string> { { Language.English, "Capture Mode" }, { Language.Japanese, "撮影モード" } } },
+            { "Individual", new Dictionary<Language, string> { { Language.English, "Individual" }, { Language.Japanese, "個別" } } },
+            { "Group", new Dictionary<Language, string> { { Language.English, "Group" }, { Language.Japanese, "グループ" } } },
             { "CaptureAngleMode", new Dictionary<Language, string> { { Language.English, "Capture Angle Mode" }, { Language.Japanese, "撮影アングルモード" } } },
             { "AngleMode", new Dictionary<Language, string> { { Language.English, "Angle Mode" }, { Language.Japanese, "アングル" } } },
+            { "Normal", new Dictionary<Language, string> { { Language.English, "Normal" }, { Language.Japanese, "通常アングル" } } },
+            { "Diagonal", new Dictionary<Language, string> { { Language.English, "Diagonal" }, { Language.Japanese, "斜めアングル" } } },
+            { "NormalAndDiagonal", new Dictionary<Language, string> { { Language.English, "Normal + Diagonal" }, { Language.Japanese, "通常+斜めアングル" } } },
             { "OutputResolution", new Dictionary<Language, string> { { Language.English, "Output Resolution (X, Y)" }, { Language.Japanese, "出力解像度 (X, Y)" } } },
             { "ZoomFactor", new Dictionary<Language, string> { { Language.English, "Zoom Factor" }, { Language.Japanese, "拡大率" } } },
             { "PositionOffset", new Dictionary<Language, string> { { Language.English, "Position Offset" }, { Language.Japanese, "撮影位置オフセット" } } },
