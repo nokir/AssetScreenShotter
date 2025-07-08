@@ -21,6 +21,7 @@ public class AssetScreenshotterEditor : EditorWindow
     private Language currentLanguage = Language.English;
     private Vector3 captureOffset = Vector3.zero;
     private bool openFolderAfterCapture = true;
+    private float diagonalAngle = 45.0f;
 
     // --- Angle States ---
     private Dictionary<string, bool> angleEnabledStates = new Dictionary<string, bool>();
@@ -44,6 +45,7 @@ public class AssetScreenshotterEditor : EditorWindow
     private const string PositionOffsetKey = "AssetScreenshotter_PositionOffset";
     private const string OpenFolderKey = "AssetScreenshotter_OpenFolder";
     private const string AngleStatesKey = "AssetScreenshotter_AngleStates";
+    private const string DiagonalAngleKey = "AssetScreenshotter_DiagonalAngle";
 
     // --- Localization Dictionary ---
     private Dictionary<string, Dictionary<Language, string>> localization;
@@ -66,6 +68,7 @@ public class AssetScreenshotterEditor : EditorWindow
         currentLanguage = (Language)EditorPrefs.GetInt(LanguageKey, (int)Language.English);
         captureOffset = StringToVector3(EditorPrefs.GetString(PositionOffsetKey, "0,0,0"));
         openFolderAfterCapture = EditorPrefs.GetBool(OpenFolderKey, true);
+        diagonalAngle = EditorPrefs.GetFloat(DiagonalAngleKey, 45.0f);
 
         LoadAngleStates();
 
@@ -124,7 +127,7 @@ public class AssetScreenshotterEditor : EditorWindow
         }
         EditorGUILayout.Space();
 
-        // Angle Toggles based on selected mode
+        // Angle Toggles and Settings based on selected mode
         if (captureAngleMode == CaptureAngleMode.Normal || captureAngleMode == CaptureAngleMode.NormalAndDiagonal)
         {
             GUILayout.Label(GetText("NormalAngles"), EditorStyles.miniBoldLabel);
@@ -133,6 +136,7 @@ public class AssetScreenshotterEditor : EditorWindow
         if (captureAngleMode == CaptureAngleMode.Diagonal || captureAngleMode == CaptureAngleMode.NormalAndDiagonal)
         {
             GUILayout.Label(GetText("DiagonalAngles"), EditorStyles.miniBoldLabel);
+            diagonalAngle = EditorGUILayout.Slider(GetText("DiagonalAngleSetting"), diagonalAngle, 0f, 90f);
             DrawAngleToggles(GetDiagonalDirections());
         }
         EditorGUILayout.Space();
@@ -205,6 +209,7 @@ public class AssetScreenshotterEditor : EditorWindow
         EditorPrefs.SetInt(LanguageKey, (int)currentLanguage);
         EditorPrefs.SetString(PositionOffsetKey, Vector3ToString(captureOffset));
         EditorPrefs.SetBool(OpenFolderKey, openFolderAfterCapture);
+        EditorPrefs.SetFloat(DiagonalAngleKey, diagonalAngle);
         SaveAngleStates();
     }
 
@@ -481,16 +486,20 @@ public class AssetScreenshotterEditor : EditorWindow
 
     private List<KeyValuePair<string, Vector3>> GetDiagonalDirections()
     {
+        float angleRad = diagonalAngle * Mathf.Deg2Rad;
+        float y = Mathf.Sin(angleRad);
+        float xz = Mathf.Cos(angleRad);
+
         return new List<KeyValuePair<string, Vector3>>
         {
-            new KeyValuePair<string, Vector3>("_Front_Right_Up", new Vector3(1, 1, 1)),
-            new KeyValuePair<string, Vector3>("_Front_Left_Up", new Vector3(-1, 1, 1)),
-            new KeyValuePair<string, Vector3>("_Back_Right_Up", new Vector3(1, 1, -1)),
-            new KeyValuePair<string, Vector3>("_Back_Left_Up", new Vector3(-1, 1, -1)),
-            new KeyValuePair<string, Vector3>("_Front_Right_Down", new Vector3(1, -1, 1)),
-            new KeyValuePair<string, Vector3>("_Front_Left_Down", new Vector3(-1, -1, 1)),
-            new KeyValuePair<string, Vector3>("_Back_Right_Down", new Vector3(1, -1, -1)),
-            new KeyValuePair<string, Vector3>("_Back_Left_Down", new Vector3(-1, -1, -1))
+            new KeyValuePair<string, Vector3>("_Front_Right_Up", new Vector3(xz, y, xz)),
+            new KeyValuePair<string, Vector3>("_Front_Left_Up", new Vector3(-xz, y, xz)),
+            new KeyValuePair<string, Vector3>("_Back_Right_Up", new Vector3(xz, y, -xz)),
+            new KeyValuePair<string, Vector3>("_Back_Left_Up", new Vector3(-xz, y, -xz)),
+            new KeyValuePair<string, Vector3>("_Front_Right_Down", new Vector3(xz, -y, xz)),
+            new KeyValuePair<string, Vector3>("_Front_Left_Down", new Vector3(-xz, -y, xz)),
+            new KeyValuePair<string, Vector3>("_Back_Right_Down", new Vector3(xz, -y, -xz)),
+            new KeyValuePair<string, Vector3>("_Back_Left_Down", new Vector3(-xz, -y, -xz))
         };
     }
 
@@ -547,14 +556,8 @@ public class AssetScreenshotterEditor : EditorWindow
     private void InitializeAngleStates()
     {
         // Ensure all possible angles have an entry, defaulting to true
-        foreach (var dir in GetNormalDirections())
-        {
-            if (!angleEnabledStates.ContainsKey(dir.Key))
-            {
-                angleEnabledStates[dir.Key] = true;
-            }
-        }
-        foreach (var dir in GetDiagonalDirections())
+        var allDirections = GetNormalDirections().Concat(GetDiagonalDirections());
+        foreach (var dir in allDirections)
         {
             if (!angleEnabledStates.ContainsKey(dir.Key))
             {
@@ -667,6 +670,7 @@ public class AssetScreenshotterEditor : EditorWindow
             { "Normal", new Dictionary<Language, string> { { Language.English, "Normal" }, { Language.Japanese, "通常アングル" } } },
             { "Diagonal", new Dictionary<Language, string> { { Language.English, "Diagonal" }, { Language.Japanese, "斜めアングル" } } },
             { "NormalAndDiagonal", new Dictionary<Language, string> { { Language.English, "Normal + Diagonal" }, { Language.Japanese, "通常+斜めアングル" } } },
+            { "DiagonalAngleSetting", new Dictionary<Language, string> { { Language.English, "Diagonal Angle" }, { Language.Japanese, "斜めアングルの角度" } } },
             { "OutputResolution", new Dictionary<Language, string> { { Language.English, "Output Resolution (X, Y)" }, { Language.Japanese, "出力解像度 (X, Y)" } } },
             { "ZoomFactor", new Dictionary<Language, string> { { Language.English, "Zoom Factor" }, { Language.Japanese, "拡大率" } } },
             { "PositionOffset", new Dictionary<Language, string> { { Language.English, "Position Offset" }, { Language.Japanese, "撮影位置オフセット" } } },
